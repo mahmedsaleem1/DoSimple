@@ -13,20 +13,23 @@ public class AuthService : IAuthService
     private readonly JwtTokenGenerator _tokenGenerator;
     private readonly IEmailService _emailService;
     private readonly ILogger<AuthService> _logger;
+    private readonly IConfiguration _configuration;
 
     public AuthService(
         AppDbContext context,
         JwtTokenGenerator tokenGenerator,
         IEmailService emailService,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IConfiguration configuration)
     {
         _context = context;
         _tokenGenerator = tokenGenerator;
         _emailService = emailService;
         _logger = logger;
+        _configuration = configuration;
     }
 
-    public async Task<AuthResponse?> RegisterAsync(RegisterRequest request)
+    public async Task<RegisterResponse?> RegisterAsync(RegisterRequest request)
     {
         try
         {
@@ -43,13 +46,13 @@ public class AuthService : IAuthService
             // Generate email verification token
             var verificationToken = GenerateSecureToken();
 
-            // Create new user
+            // Create new user with default User role
             var user = new User
             {
                 Name = request.Name,
                 Email = request.Email,
                 Password = PasswordHasher.HashPassword(request.Password),
-                Role = request.Role,
+                Role = "User",
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = null,
                 IsEmailVerified = false,
@@ -65,22 +68,77 @@ public class AuthService : IAuthService
             // Send verification email
             await _emailService.SendEmailVerificationAsync(user.Email, user.Name, verificationToken);
 
-            // Generate token
-            var token = _tokenGenerator.GenerateToken(user);
-            var expiresAt = _tokenGenerator.GetTokenExpiry();
-
-            return new AuthResponse
+            // Return message instead of token - user must verify email first
+            return new RegisterResponse
             {
-                Token = token,
-                Email = user.Email,
-                Name = user.Name,
-                Role = user.Role,
-                ExpiresAt = expiresAt
+                Message = "Registration successful! Please check your email to verify your account before logging in.",
+                Email = user.Email
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during user registration");
+            return null;
+        }
+    }
+
+    public async Task<RegisterResponse?> RegisterAdminAsync(RegisterAdminRequest request)
+    {
+        try
+        {
+            // Validate admin secret key
+            var configuredSecretKey = _configuration["AdminSettings:SecretKey"];
+            if (string.IsNullOrEmpty(configuredSecretKey) || request.AdminSecretKey != configuredSecretKey)
+            {
+                _logger.LogWarning("Admin registration failed: Invalid secret key for email {Email}", request.Email);
+                return null;
+            }
+
+            // Check if user already exists
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+            if (existingUser != null)
+            {
+                _logger.LogWarning("Admin registration failed: Email {Email} already exists", request.Email);
+                return null;
+            }
+
+            // Generate email verification token
+            var verificationToken = GenerateSecureToken();
+
+            // Create new user with Admin role
+            var user = new User
+            {
+                Name = request.Name,
+                Email = request.Email,
+                Password = PasswordHasher.HashPassword(request.Password),
+                Role = "Admin",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = null,
+                IsEmailVerified = false,
+                EmailVerificationToken = verificationToken,
+                EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24)
+            };
+
+            _context.Users.Add(user);
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Admin registered successfully: {Email}", user.Email);
+
+            // Send verification email
+            await _emailService.SendEmailVerificationAsync(user.Email, user.Name, verificationToken);
+
+            // Return message instead of token - user must verify email first
+            return new RegisterResponse
+            {
+                Message = "Admin registration successful! Please check your email to verify your account before logging in.",
+                Email = user.Email
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during admin registration");
             return null;
         }
     }
@@ -103,6 +161,13 @@ public class AuthService : IAuthService
             if (!PasswordHasher.VerifyPassword(request.Password, user.Password))
             {
                 _logger.LogWarning("Login failed: Invalid password for email {Email}", request.Email);
+                return null;
+            }
+
+            // Check if email is verified
+            if (!user.IsEmailVerified)
+            {
+                _logger.LogWarning("Login failed: Email not verified for {Email}", request.Email);
                 return null;
             }
 

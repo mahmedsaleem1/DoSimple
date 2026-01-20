@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Server.DTOs;
 
-public class RegisterRequest
+public class RegisterAdminRequest
 {
     [Required]
     [StringLength(50)]
@@ -16,4 +16,7 @@ public class RegisterRequest
     [Required]
     [MinLength(6)]
     public string Password { get; set; } = string.Empty;
+
+    [Required]
+    public string AdminSecretKey { get; set; } = string.Empty;
 }
