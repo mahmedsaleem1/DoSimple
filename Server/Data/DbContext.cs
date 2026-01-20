@@ -35,6 +35,15 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             
             entity.Property(e => e.UpdatedAt)
                 .IsRequired(false);
+            
+            entity.Property(e => e.PasswordResetToken)
+                .IsRequired(false);
+            
+            entity.Property(e => e.PasswordResetTokenExpiry)
+                .IsRequired(false);
+            
+            entity.HasIndex(e => e.Email)
+                .IsUnique();
         });
     }
 }
