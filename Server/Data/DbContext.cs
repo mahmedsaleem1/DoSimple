@@ -36,6 +36,16 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             entity.Property(e => e.UpdatedAt)
                 .IsRequired(false);
             
+            entity.Property(e => e.IsEmailVerified)
+                .IsRequired()
+                .HasDefaultValue(false);
+            
+            entity.Property(e => e.EmailVerificationToken)
+                .IsRequired(false);
+            
+            entity.Property(e => e.EmailVerificationTokenExpiry)
+                .IsRequired(false);
+            
             entity.Property(e => e.PasswordResetToken)
                 .IsRequired(false);
             

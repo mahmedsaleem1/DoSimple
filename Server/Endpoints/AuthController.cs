@@ -111,11 +111,33 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Verify email address with token
+    /// </summary>
+    [HttpGet("verify-email")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyEmail([FromQuery] string token)
+    {
+        if (string.IsNullOrEmpty(token))
+        {
+            return BadRequest(new { message = "Token is required." });
+        }
+
+        var result = await _authService.VerifyEmailAsync(token);
+
+        if (!result)
+        {
+            return BadRequest(new { message = "Email verification failed. Invalid or expired token." });
+        }
+
+        return Ok(new { message = "Email verified successfully! You can now close this window." });
+    }
+
+    /// <summary>
     /// Test endpoint to verify authentication is working
     /// </summary>
     [HttpGet("verify")]
-    [Authorize] // authorized (protected endpoint)
-    public IActionResult Verify() // Inorder to check if the user was authenticated when the application was loader first
+    [Authorize]
+    public IActionResult Verify()
     {
         var userId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value;
