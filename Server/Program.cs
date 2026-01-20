@@ -5,6 +5,10 @@ using Microsoft.IdentityModel.Tokens;
 using Server.Data;
 using Server.Services;
 using Server.Utills;
+using DotNetEnv;
+
+// Load environment variables from .env file
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 

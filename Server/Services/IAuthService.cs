@@ -4,7 +4,8 @@ namespace Server.Services;
 
 public interface IAuthService
 {
-    Task<AuthResponse?> RegisterAsync(RegisterRequest request);
+    Task<RegisterResponse?> RegisterAsync(RegisterRequest request);
+    Task<RegisterResponse?> RegisterAdminAsync(RegisterAdminRequest request);
     Task<AuthResponse?> LoginAsync(LoginRequest request);
     Task<bool> ForgotPasswordAsync(ForgotPasswordRequest request);
     Task<bool> ResetPasswordAsync(ResetPasswordRequest request);
