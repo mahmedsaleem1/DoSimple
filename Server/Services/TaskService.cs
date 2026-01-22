@@ -114,7 +114,7 @@ public class TaskService : ITaskService
             var query = _context.Tasks
                 .Include(t => t.CreatedByUser)
                 .Include(t => t.AssignedToUser)
-                .AsQueryable();
+                .AsQueryable(); // Dont make db request now ill add more WHERE's too
 
             // Apply authorization filter
             if (userRole != "Admin" && userRole != "SuperAdmin")
@@ -175,7 +175,7 @@ public class TaskService : ITaskService
                 .OrderByDescending(t => t.CreatedAt)
                 .Skip((pageNumber - 1) * pageSize)
                 .Take(pageSize)
-                .ToListAsync();
+                .ToListAsync(); // Now db called
 
             var taskResponses = tasks.Select(MapToTaskResponse).ToList();
 
