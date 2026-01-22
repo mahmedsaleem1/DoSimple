@@ -10,16 +10,18 @@ public class TaskService : ITaskService
 {
     private readonly AppDbContext _context;
     private readonly ILogger<TaskService> _logger;
+    private readonly ICloudinaryService _cloudinaryService;
 
-    public TaskService(AppDbContext context, ILogger<TaskService> logger)
+    public TaskService(AppDbContext context, ILogger<TaskService> logger, ICloudinaryService cloudinaryService)
     {
         _context = context;
         _logger = logger;
+        _cloudinaryService = cloudinaryService;
     }
 
     // ==================== CREATE ====================
     
-    public async Task<TaskResponse?> CreateTaskAsync(CreateTaskRequest request, int createdByUserId)
+    public async Task<TaskResponse?> CreateTaskAsync(CreateTaskRequest request, int createdByUserId, IFormFile? imageFile = null)
     {
         try
         {
@@ -34,6 +36,17 @@ public class TaskService : ITaskService
                 }
             }
 
+            // Upload image if provided
+            string? imageUrl = null;
+            if (imageFile != null)
+            {
+                imageUrl = await _cloudinaryService.UploadImageAsync(imageFile);
+                if (imageUrl == null)
+                {
+                    _logger.LogWarning("Failed to upload image for task");
+                }
+            }
+
             var task = new TaskItem
             {
                 Title = request.Title,
@@ -44,6 +57,7 @@ public class TaskService : ITaskService
                 Status = TaskStatus.Pending,
                 CreatedByUserId = createdByUserId,
                 AssignedToUserId = request.AssignedToUserId,
+                ImageUrl = imageUrl,
                 CreatedAt = DateTime.UtcNow
             };
 
@@ -275,7 +289,7 @@ public class TaskService : ITaskService
 
     // ==================== UPDATE ====================
     
-    public async Task<TaskResponse?> UpdateTaskAsync(int taskId, UpdateTaskRequest request, int userId, string userRole)
+    public async Task<TaskResponse?> UpdateTaskAsync(int taskId, UpdateTaskRequest request, int userId, string userRole, IFormFile? imageFile = null)
     {
         try
         {
@@ -297,18 +311,51 @@ public class TaskService : ITaskService
                 return null;
             }
 
+            // Handle image upload if provided
+            if (imageFile != null)
+            {
+                // Delete old image if exists
+                if (!string.IsNullOrWhiteSpace(task.ImageUrl))
+                {
+                    var publicId = ExtractPublicIdFromUrl(task.ImageUrl);
+                    if (!string.IsNullOrWhiteSpace(publicId))
+                    {
+                        await _cloudinaryService.DeleteImageAsync(publicId);
+                    }
+                }
+
+                // Upload new image
+                var newImageUrl = await _cloudinaryService.UploadImageAsync(imageFile);
+                if (newImageUrl != null)
+                {
+                    task.ImageUrl = newImageUrl;
+                }
+            }
+
             // Update fields if provided
             if (!string.IsNullOrWhiteSpace(request.Title))
+            {
+                _logger.LogInformation("Updating Title from '{OldTitle}' to '{NewTitle}'", task.Title, request.Title);
                 task.Title = request.Title;
+            }
 
             if (!string.IsNullOrWhiteSpace(request.Description))
+            {
+                _logger.LogInformation("Updating Description");
                 task.Description = request.Description;
+            }
 
             if (request.Status.HasValue)
+            {
+                _logger.LogInformation("Updating Status from {OldStatus} to {NewStatus}", task.Status, request.Status.Value);
                 task.Status = request.Status.Value;
+            }
 
             if (request.Priority.HasValue)
+            {
+                _logger.LogInformation("Updating Priority from {OldPriority} to {NewPriority}", task.Priority, request.Priority.Value);
                 task.Priority = request.Priority.Value;
+            }
 
             if (!string.IsNullOrWhiteSpace(request.Category))
                 task.Category = request.Category;
@@ -334,7 +381,8 @@ public class TaskService : ITaskService
 
             _logger.LogInformation("Task {TaskId} updated by user {UserId}", taskId, userId);
 
-            return MapToTaskResponse(task);
+            // Fetch updated task with fresh data
+            return await GetTaskByIdAsync(taskId, userId, userRole);
         }
         catch (Exception ex)
         {
@@ -372,7 +420,8 @@ public class TaskService : ITaskService
 
             _logger.LogInformation("Task {TaskId} status updated to {Status} by user {UserId}", taskId, status, userId);
 
-            return MapToTaskResponse(task);
+            // Fetch updated task with fresh data
+            return await GetTaskByIdAsync(taskId, userId, userRole);
         }
         catch (Exception ex)
         {
@@ -418,7 +467,8 @@ public class TaskService : ITaskService
 
             _logger.LogInformation("Task {TaskId} assigned to user {AssignedUserId} by user {UserId}", taskId, assignToUserId, userId);
 
-            return MapToTaskResponse(task);
+            // Fetch updated task with fresh data
+            return await GetTaskByIdAsync(taskId, userId, userRole);
         }
         catch (Exception ex)
         {
@@ -456,7 +506,8 @@ public class TaskService : ITaskService
 
             _logger.LogInformation("Task {TaskId} unassigned by user {UserId}", taskId, userId);
 
-            return MapToTaskResponse(task);
+            // Fetch updated task with fresh data
+            return await GetTaskByIdAsync(taskId, userId, userRole);
         }
         catch (Exception ex)
         {
@@ -589,6 +640,37 @@ public class TaskService : ITaskService
 
     // ==================== HELPER METHODS ====================
     
+    private static string? ExtractPublicIdFromUrl(string imageUrl)
+    {
+        try
+        {
+            // Extract public ID from Cloudinary URL
+            // Format: https://res.cloudinary.com/{cloud_name}/image/upload/{version}/{public_id}.{format}
+            var uri = new Uri(imageUrl);
+            var segments = uri.AbsolutePath.Split('/');
+            
+            // Find the dosimple/tasks folder and get everything after it
+            for (int i = 0; i < segments.Length; i++)
+            {
+                if (segments[i] == "dosimple" && i + 1 < segments.Length && segments[i + 1] == "tasks")
+                {
+                    if (i + 2 < segments.Length)
+                    {
+                        var fileNameWithExtension = segments[i + 2];
+                        var fileName = Path.GetFileNameWithoutExtension(fileNameWithExtension);
+                        return $"dosimple/tasks/{fileName}";
+                    }
+                }
+            }
+            
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+    
     private static TaskResponse MapToTaskResponse(TaskItem task)
     {
         return new TaskResponse
@@ -600,6 +682,7 @@ public class TaskService : ITaskService
             Priority = task.Priority.ToString(),
             Category = task.Category,
             DueDate = task.DueDate,
+            ImageUrl = task.ImageUrl,
             CreatedByUserId = task.CreatedByUserId,
             CreatedByUserName = task.CreatedByUser?.Name ?? string.Empty,
             AssignedToUserId = task.AssignedToUserId,

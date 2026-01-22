@@ -11,6 +11,7 @@ public class TaskResponse
     public string Priority { get; set; } = string.Empty;
     public string Category { get; set; } = string.Empty;
     public DateTime? DueDate { get; set; }
+    public string? ImageUrl { get; set; }
     public int CreatedByUserId { get; set; }
     public string CreatedByUserName { get; set; } = string.Empty;
     public int? AssignedToUserId { get; set; }

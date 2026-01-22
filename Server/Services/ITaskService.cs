@@ -7,7 +7,7 @@ namespace Server.Services;
 public interface ITaskService
 {
     // Create
-    Task<TaskResponse?> CreateTaskAsync(CreateTaskRequest request, int createdByUserId);
+    Task<TaskResponse?> CreateTaskAsync(CreateTaskRequest request, int createdByUserId, IFormFile? imageFile = null);
     
     // Read
     Task<TaskResponse?> GetTaskByIdAsync(int taskId, int userId, string userRole);
@@ -29,7 +29,7 @@ public interface ITaskService
     Task<List<string>> GetCategoriesAsync(int userId, string userRole);
     
     // Update
-    Task<TaskResponse?> UpdateTaskAsync(int taskId, UpdateTaskRequest request, int userId, string userRole);
+    Task<TaskResponse?> UpdateTaskAsync(int taskId, UpdateTaskRequest request, int userId, string userRole, IFormFile? imageFile = null);
     Task<TaskResponse?> UpdateTaskStatusAsync(int taskId, TaskStatus status, int userId, string userRole);
     Task<TaskResponse?> AssignTaskAsync(int taskId, int assignToUserId, int userId, string userRole);
     Task<TaskResponse?> UnassignTaskAsync(int taskId, int userId, string userRole);

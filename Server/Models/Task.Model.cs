@@ -25,6 +25,7 @@ public class TaskItem
     public TaskPriority Priority { get; set; } = TaskPriority.Medium;
     public string Category { get; set; } = string.Empty;
     public DateTime? DueDate { get; set; }
+    public string? ImageUrl { get; set; }
     
     // Foreign Keys
     public int CreatedByUserId { get; set; }

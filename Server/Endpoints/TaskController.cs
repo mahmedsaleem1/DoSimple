@@ -25,10 +25,10 @@ public class TaskController : ControllerBase
     // ==================== CREATE ====================
 
     /// <summary>
-    /// Create a new task
+    /// Create a new task with optional image
     /// </summary>
     [HttpPost]
-    public async Task<IActionResult> CreateTask([FromBody] CreateTaskRequest request)
+    public async Task<IActionResult> CreateTask([FromForm] CreateTaskRequest request, IFormFile? image)
     {
         if (!ModelState.IsValid)
         {
@@ -41,11 +41,11 @@ public class TaskController : ControllerBase
             return Unauthorized(new { message = "Invalid user authentication" });
         }
 
-        var result = await _taskService.CreateTaskAsync(request, userId);
+        var result = await _taskService.CreateTaskAsync(request, userId, image);
 
         if (result == null)
         {
-            return BadRequest(new { message = "Failed to create task. Assigned user may not exist." });
+            return BadRequest(new { message = "Failed to create task. Assigned user may not exist or image upload failed." });
         }
 
         _logger.LogInformation("Task {TaskId} created by user {UserId}", result.Id, userId);
@@ -259,10 +259,10 @@ public class TaskController : ControllerBase
     // ==================== UPDATE ====================
 
     /// <summary>
-    /// Update a task (partial update)
+    /// Update a task (partial update) with optional image
     /// </summary>
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateTask(int id, [FromBody] UpdateTaskRequest request)
+    public async Task<IActionResult> UpdateTask(int id, [FromForm] UpdateTaskRequest request, IFormFile? image)
     {
         if (!ModelState.IsValid)
         {
@@ -277,7 +277,7 @@ public class TaskController : ControllerBase
             return Unauthorized(new { message = "Invalid user authentication" });
         }
 
-        var result = await _taskService.UpdateTaskAsync(id, request, userId, userRole);
+        var result = await _taskService.UpdateTaskAsync(id, request, userId, userRole, image);
 
         if (result == null)
         {
