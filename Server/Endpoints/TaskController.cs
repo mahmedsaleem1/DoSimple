@@ -56,30 +56,6 @@ public class TaskController : ControllerBase
     // ==================== READ ====================
 
     /// <summary>
-    /// Get a specific task by ID
-    /// </summary>
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetTaskById(int id)
-    {
-        var userId = GetUserId();
-        var userRole = GetUserRole();
-
-        if (userId == 0)
-        {
-            return Unauthorized(new { message = "Invalid user authentication" });
-        }
-
-        var result = await _taskService.GetTaskByIdAsync(id, userId, userRole);
-
-        if (result == null)
-        {
-            return NotFound(new { message = "Task not found or you don't have access" });
-        }
-
-        return Ok(result);
-    }
-
-    /// <summary>
     /// Get all tasks with optional filters and pagination
     /// Query parameters:
     /// - status: Filter by task status (Pending=0, InProgress=1, Completed=2, Cancelled=3)
@@ -221,10 +197,11 @@ public class TaskController : ControllerBase
 
         var result = await _taskService.GetTasksAsync(
             userId,
-            "User", // Force user filter to only see created tasks
+            userRole,
             status,
             pageNumber: pageNumber,
-            pageSize: pageSize);
+            pageSize: pageSize,
+            createdByUserIdFilter: userId);
 
         return Ok(result);
     }
@@ -251,6 +228,30 @@ public class TaskController : ControllerBase
             isOverdue: true,
             pageNumber: pageNumber,
             pageSize: pageSize);
+
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Get a specific task by ID
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetTaskById(int id)
+    {
+        var userId = GetUserId();
+        var userRole = GetUserRole();
+
+        if (userId == 0)
+        {
+            return Unauthorized(new { message = "Invalid user authentication" });
+        }
+
+        var result = await _taskService.GetTaskByIdAsync(id, userId, userRole);
+
+        if (result == null)
+        {
+            return NotFound(new { message = "Task not found or you don't have access" });
+        }
 
         return Ok(result);
     }
@@ -376,34 +377,6 @@ public class TaskController : ControllerBase
         return Ok(result);
     }
 
-    // ==================== DELETE ====================
-
-    /// <summary>
-    /// Delete a task
-    /// </summary>
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteTask(int id)
-    {
-        var userId = GetUserId();
-        var userRole = GetUserRole();
-
-        if (userId == 0)
-        {
-            return Unauthorized(new { message = "Invalid user authentication" });
-        }
-
-        var result = await _taskService.DeleteTaskAsync(id, userId, userRole);
-
-        if (!result)
-        {
-            return NotFound(new { message = "Task not found or you don't have permission to delete it" });
-        }
-
-        _logger.LogInformation("Task {TaskId} deleted by user {UserId}", id, userId);
-
-        return Ok(new { message = "Task deleted successfully" });
-    }
-
     // ==================== BULK OPERATIONS ====================
 
     /// <summary>
@@ -471,6 +444,34 @@ public class TaskController : ControllerBase
         _logger.LogInformation("Bulk status update to {Status} by user {UserId}", request.Status, userId);
 
         return Ok(new { message = "Tasks status updated successfully" });
+    }
+
+    // ==================== DELETE ====================
+
+    /// <summary>
+    /// Delete a task
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteTask(int id)
+    {
+        var userId = GetUserId();
+        var userRole = GetUserRole();
+
+        if (userId == 0)
+        {
+            return Unauthorized(new { message = "Invalid user authentication" });
+        }
+
+        var result = await _taskService.DeleteTaskAsync(id, userId, userRole);
+
+        if (!result)
+        {
+            return NotFound(new { message = "Task not found or you don't have permission to delete it" });
+        }
+
+        _logger.LogInformation("Task {TaskId} deleted by user {UserId}", id, userId);
+
+        return Ok(new { message = "Task deleted successfully" });
     }
 
     // ==================== HELPER METHODS ====================

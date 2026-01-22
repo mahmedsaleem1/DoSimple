@@ -107,7 +107,8 @@ public class TaskService : ITaskService
         DateTime? dueDateTo = null,
         string? searchTerm = null,
         int pageNumber = 1, 
-        int pageSize = 10)
+        int pageSize = 10,
+        int? createdByUserIdFilter = null)
     {
         try
         {
@@ -117,7 +118,12 @@ public class TaskService : ITaskService
                 .AsQueryable(); // Dont make db request now ill add more WHERE's too
 
             // Apply authorization filter
-            if (userRole != "Admin" && userRole != "SuperAdmin")
+            if (createdByUserIdFilter.HasValue)
+            {
+                // Filter only by tasks created by specific user
+                query = query.Where(t => t.CreatedByUserId == createdByUserIdFilter.Value);
+            }
+            else if (userRole != "Admin" && userRole != "SuperAdmin")
             {
                 query = query.Where(t => t.CreatedByUserId == userId || t.AssignedToUserId == userId);
             }

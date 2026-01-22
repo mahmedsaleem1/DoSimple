@@ -23,7 +23,8 @@ public interface ITaskService
         DateTime? dueDateTo = null,
         string? searchTerm = null,
         int pageNumber = 1, 
-        int pageSize = 10);
+        int pageSize = 10,
+        int? createdByUserIdFilter = null);
     Task<TaskStatsResponse> GetTaskStatsAsync(int userId, string userRole);
     Task<List<string>> GetCategoriesAsync(int userId, string userRole);
     
