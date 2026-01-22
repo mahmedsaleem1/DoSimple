@@ -6,6 +6,7 @@ namespace Server.Data;
 public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)
 {
     public DbSet<User> Users { get; set; }
+    public DbSet<TaskItem> Tasks { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,6 +55,55 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             
             entity.HasIndex(e => e.Email)
                 .IsUnique();
+        });
+
+        modelBuilder.Entity<TaskItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            
+            entity.Property(e => e.Title)
+                .IsRequired()
+                .HasMaxLength(200);
+            
+            entity.Property(e => e.Description)
+                .IsRequired()
+                .HasMaxLength(2000);
+            
+            entity.Property(e => e.Status)
+                .IsRequired()
+                .HasConversion<int>();
+            
+            entity.Property(e => e.Priority)
+                .IsRequired()
+                .HasConversion<int>();
+            
+            entity.Property(e => e.Category)
+                .IsRequired()
+                .HasMaxLength(100);
+            
+            entity.Property(e => e.DueDate)
+                .IsRequired(false);
+            
+            entity.Property(e => e.CreatedAt)
+                .IsRequired();
+            
+            entity.Property(e => e.UpdatedAt)
+                .IsRequired(false);
+            
+            // Relationships
+            entity.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedByUserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            
+            entity.HasOne(e => e.AssignedToUser)
+                .WithMany()
+                .HasForeignKey(e => e.AssignedToUserId)
+                .OnDelete(DeleteBehavior.SetNull);
+            
+            entity.HasIndex(e => e.Status);
+            entity.HasIndex(e => e.AssignedToUserId);
+            entity.HasIndex(e => e.CreatedByUserId);
         });
     }
 }
