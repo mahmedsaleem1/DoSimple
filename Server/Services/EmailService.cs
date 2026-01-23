@@ -76,7 +76,7 @@ public class EmailService : IEmailService
     public async Task<bool> SendPasswordResetEmailAsync(string toEmail, string userName, string resetToken)
     {
         var subject = "Password Reset Request - DoSimple";
-        var resetLink = $"{_appUrl}/reset-password?token={resetToken}";
+        var resetLink = $"{_appUrl}/api/auth/reset-password?token={resetToken}";
 
         var body = $@"
 <!DOCTYPE html>

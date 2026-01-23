@@ -19,7 +19,7 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
-    /// Register a new user account
+    /// Register a new user account (User role only)
     /// </summary>
     [HttpPost("register")] // api/auth/register
     [AllowAnonymous]  // No need of Token here
@@ -43,6 +43,30 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Register a new admin account (Admin role) - Requires secret key
+    /// </summary>
+    [HttpPost("register-admin")] // api/auth/register-admin
+    [AllowAnonymous]
+    public async Task<IActionResult> RegisterAdmin([FromBody] RegisterAdminRequest request)
+    {
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+
+        var result = await _authService.RegisterAdminAsync(request);
+
+        if (result == null)
+        {
+            return BadRequest(new { message = "Admin registration failed. Invalid secret key, or email may already be in use." });
+        }
+
+        _logger.LogInformation("Admin registered successfully: {Email}", request.Email);
+
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Login with email and password
     /// </summary>
     [HttpPost("login")] // api/auth/login
@@ -58,7 +82,7 @@ public class AuthController : ControllerBase
 
         if (result == null)
         {
-            return Unauthorized(new { message = "Invalid email or password." });
+            return Unauthorized(new { message = "Invalid email or password, or email not verified. Please check your email for the verification link." });
         }
 
         _logger.LogInformation("User logged in successfully: {Email}", request.Email);

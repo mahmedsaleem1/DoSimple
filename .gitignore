@@ -75,3 +75,11 @@ _[Ss]cripts
 *.dot[Cc]over
 #Environment specific files
 .env
+
+# Ignore environment-specific appsettings, but keep the base template
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Staging.json
+
+# Keep .env.example as a template
+!.env.example
