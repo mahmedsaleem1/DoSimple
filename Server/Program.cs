@@ -12,6 +12,9 @@ Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add environment variables to configuration
+builder.Configuration.AddEnvironmentVariables();
+
 // ========================================
 // Configure Services
 // ========================================
