@@ -1,5 +1,6 @@
-using System.Net;
-using System.Net.Mail;
+using MailKit.Net.Smtp;
+using MailKit.Security;
+using MimeKit;
 
 namespace Server.Services;
 
@@ -28,6 +29,10 @@ public class EmailService : IEmailService
         _fromEmail = emailSettings["FromEmail"] ?? "";
         _fromName = emailSettings["FromName"] ?? "DoSimple";
         _appUrl = emailSettings["AppUrl"] ?? "http://localhost:5248";
+
+        // Log configuration for debugging (mask password)
+        _logger.LogInformation("Email Service configured: Host={Host}, Port={Port}, Username={Username}, HasPassword={HasPassword}", 
+            _smtpHost, _smtpPort, _smtpUsername, !string.IsNullOrEmpty(_smtpPassword));
     }
 
     public async Task<bool> SendEmailVerificationAsync(string toEmail, string userName, string verificationToken)
@@ -176,23 +181,20 @@ public class EmailService : IEmailService
                 return true; // Return true in development to not block the flow
             }
 
-            using var smtpClient = new SmtpClient(_smtpHost, _smtpPort)
-            {
-                EnableSsl = true,
-                Credentials = new NetworkCredential(_smtpUsername, _smtpPassword)
-            };
+            var message = new MimeMessage();
+            message.From.Add(new MailboxAddress(_fromName, _fromEmail));
+            message.To.Add(MailboxAddress.Parse(toEmail));
+            message.Subject = subject;
 
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(_fromEmail, _fromName),
-                Subject = subject,
-                Body = htmlBody,
-                IsBodyHtml = true
-            };
+            var bodyBuilder = new BodyBuilder { HtmlBody = htmlBody };
+            message.Body = bodyBuilder.ToMessageBody();
 
-            mailMessage.To.Add(toEmail);
+            using var client = new SmtpClient();
+            await client.ConnectAsync(_smtpHost, _smtpPort, SecureSocketOptions.StartTls);
+            await client.AuthenticateAsync(_smtpUsername, _smtpPassword);
+            await client.SendAsync(message);
+            await client.DisconnectAsync(true);
 
-            await smtpClient.SendMailAsync(mailMessage);
             _logger.LogInformation("Email sent successfully to {Email}", toEmail);
             return true;
         }

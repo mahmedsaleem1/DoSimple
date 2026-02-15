@@ -5,24 +5,40 @@ namespace Server.Services;
 
 public class CloudinaryService : ICloudinaryService
 {
-    private readonly Cloudinary _cloudinary;
+    private readonly Cloudinary? _cloudinary;
     private readonly ILogger<CloudinaryService> _logger;
+    private readonly bool _isConfigured;
 
     public CloudinaryService(IConfiguration configuration, ILogger<CloudinaryService> logger)
     {
+        _logger = logger;
+
         var cloudName = configuration["Cloudinary:CloudName"];
         var apiKey = configuration["Cloudinary:ApiKey"];
         var apiSecret = configuration["Cloudinary:ApiSecret"];
 
+        if (string.IsNullOrEmpty(cloudName) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(apiSecret))
+        {
+            _logger.LogWarning("Cloudinary is not configured. Image upload will be disabled.");
+            _isConfigured = false;
+            return;
+        }
+
         var account = new Account(cloudName, apiKey, apiSecret);
         _cloudinary = new Cloudinary(account);
-        _logger = logger;
+        _isConfigured = true;
     }
 
     public async Task<string?> UploadImageAsync(IFormFile file)
     {
         try
         {
+            if (!_isConfigured)
+            {
+                _logger.LogWarning("Cloudinary is not configured. Cannot upload image.");
+                return null;
+            }
+
             if (file == null || file.Length == 0)
             {
                 _logger.LogWarning("No file provided for upload");
@@ -75,6 +91,12 @@ public class CloudinaryService : ICloudinaryService
     {
         try
         {
+            if (!_isConfigured)
+            {
+                _logger.LogWarning("Cloudinary is not configured. Cannot delete image.");
+                return false;
+            }
+
             if (string.IsNullOrWhiteSpace(publicId))
             {
                 return false;

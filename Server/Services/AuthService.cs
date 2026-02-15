@@ -66,13 +66,21 @@ public class AuthService : IAuthService
             _logger.LogInformation("User registered successfully: {Email}", user.Email);
 
             // Send verification email
-            await _emailService.SendEmailVerificationAsync(user.Email, user.Name, verificationToken);
+            var emailSent = await _emailService.SendEmailVerificationAsync(user.Email, user.Name, verificationToken);
+
+            if (!emailSent)
+            {
+                _logger.LogWarning("Registration succeeded but verification email failed to send for {Email}", user.Email);
+            }
 
             // Return message instead of token - user must verify email first
             return new RegisterResponse
             {
-                Message = "Registration successful! Please check your email to verify your account before logging in.",
-                Email = user.Email
+                Message = emailSent
+                    ? "Registration successful! Please check your email to verify your account before logging in."
+                    : "Registration successful! However, we could not send the verification email. Please try requesting a new verification email later.",
+                Email = user.Email,
+                EmailSent = emailSent
             };
         }
         catch (Exception ex)
@@ -127,13 +135,21 @@ public class AuthService : IAuthService
             _logger.LogInformation("Admin registered successfully: {Email}", user.Email);
 
             // Send verification email
-            await _emailService.SendEmailVerificationAsync(user.Email, user.Name, verificationToken);
+            var emailSent = await _emailService.SendEmailVerificationAsync(user.Email, user.Name, verificationToken);
+
+            if (!emailSent)
+            {
+                _logger.LogWarning("Admin registration succeeded but verification email failed to send for {Email}", user.Email);
+            }
 
             // Return message instead of token - user must verify email first
             return new RegisterResponse
             {
-                Message = "Admin registration successful! Please check your email to verify your account before logging in.",
-                Email = user.Email
+                Message = emailSent
+                    ? "Admin registration successful! Please check your email to verify your account before logging in."
+                    : "Admin registration successful! However, we could not send the verification email. Please try requesting a new verification email later.",
+                Email = user.Email,
+                EmailSent = emailSent
             };
         }
         catch (Exception ex)
